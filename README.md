@@ -19,18 +19,89 @@ The 4naly3er report can be found [here](https://github.com/code-423n4/2024-03-ca
 
 _Note for C4 wardens: Anything included in this `Automated Findings / Publicly Known Issues` section is considered a publicly known issue and is ineligible for awards._
 
-N/A
-
-✅ SCOUTS: Please format the response above 👆 so its not a wall of text and its readable.
 
 # Overview
 
-[ ⭐️ SPONSORS: add info here ]
+# Application Specific Dollar Omnichain Fungible Token (asD-OFT)
+
+## Background
+
+asD allows for protocols to earn yield on their users' dollar deposits. asD is always pegged to 1 $NOTE and this $NOTE can be deposited into the Canto Lending Market to accrue interest. This version of asD implements LayerZero's Omnichain Fungible Token to allow creators from any LayerZero supported chain to earn extra revenue from all stable coin deposits.
+
+#### Useful background information
+
+- NOTE: https://docs.canto.io/overview/canto-unit-of-account-usdnote
+- Canto Lending Market: https://docs.canto.io/overview/canto-lending-market-clm
+- Compound cTOKEN Documentation: https://docs.compound.finance/v2/ctokens
+- Layer Zero: https://docs.layerzero.network/contracts/overview
+- asD ERC20 c4 audit: https://code4rena.com/audits/2023-11-canto-application-specific-dollars-and-bonding-curves-for-1155s
+
+## asD Flow
+
+The purpose of implementing cross chain functionality with asD is to allow developers from any supported chain to earn Canto Lending Market yield without needing to directly deploy their entire protocol on the Canto application layer. By using Layer Zero v2, we can accomplish this by bridging whitelisted stable coins to mint asD tokens that can then be bridged back to the original application.
+
+![asD Flow](asdFlow.png)
+
+## Contracts
+
+### ASDOFT
+
+The ASDOFT contract is a direct implementation of the ASD ERC20 token used for [1155Tech](https://github.com/code-423n4/2023-11-canto) however it also implements LayerZero v2 OFT functionality. This allows for asD tokens minted on Canto as well as easily bridged back to the source application to be used in the protocol.
+
+In order to ensure a 1:1 peg to $NOTE, only the ASDOFT should be deployed on Canto for minting, and regular OFT implementations should be deployed on all other supported chains.
+
+### ASDRouter
+
+The ASDRouter contract allows for the minting of asD tokens to be done in a single transaction originating from any supported chain. A stable coin represented as an OFT is sent to the ASDRouter with "lzCompose" options passed to tell the Layer Zero executor to call `lzCompose` once it receives the message.
+
+```javascript
+ function lzCompose(
+    address _from,
+    bytes32 _guid,
+    bytes calldata _message,
+    address _executor,
+    bytes calldata _extraData) external payable;
+```
+
+A user who wants to obtain asD tokens must send their stable assets to the ASDRouter through Layer Zero. The `_message` must be formatted as bytes with the form of the OFTComposeMessage struct:
+
+```javascript
+struct OftComposeMessage {
+    uint32 _dstLzEid; // destination endpoint id
+    address _dstReceiver; // receiver on destination
+    address _dstAsdAddress; // asD address on destination
+    address _cantoAsdAddress; // asD on Canto (where to mint asD from)
+    uint256 _minAmountASD; // minimum amount (slippage for swap)
+    address _cantoRefundAddress; // canto refund address
+    uint256 _feeForSend; // fee for bridge to destination chain
+}
+```
+
+This struct tells the Router which asD tokens to mint and where to send them after they are obtained. The `lzCompose` function on the Router performs the following steps
+
+1. Deposits stable coin for asdUSDC
+2. Swaps asdUSDC in ambient pool for $NOTE
+3. Deposits $NOTE to asD Vault for asD tokens
+4. Sends asD tokens to destination chain and address
+
+After lzCompose has been called, the Router should never have any tokens left over (all tokens are refunded or sent). With Layer Zero execution, if the `lzCompose` reverts, the OFT tokens are still received by the Router, but the compose message can be retried. Because of this, the Router protects against reverts by implementing saftey checks and refunds during each step. All refunds will be sent to the user's address on Canto. For any message that contains `msg.value`, the entire amount will also be refunded to the user as Canto.
+
+Saftey checks:
+
+1. Incorrect compose message formatting (OFT refunded)
+2. Not whitelisted stable coin version (OFT refunded)
+3. Unsuccessful swap to $NOTE (usdcOFT refunded)
+4. Unsuccessful deposit into asD vault ($NOTE refunded)
+5. Unsuccessful bridge of asD to destination of insufficient fee (asD refunded)
+
+### ASDUSDC
+
+ASDUSDC is a simple wrapper for all of the different representations for the same stable coins that might be bridged through Layer Zero. The purpose of this is to limit the amount of pools needed for swapping tokens to $NOTE. With this wrapper, only one pool is needed and all OFT's representing the same can be wrapped into ASDUSDC and swapped for Note easily. A user can deposit any of the whitelisted usdc versions to mint ASDUSDC as well as withdraw any of those same versions (as long as there is enough locked) by burning their ASDUSDC.
+
 
 ## Links
 
-- **Previous audits:**  
-  - ✅ SCOUTS: If there are multiple report links, please format them in a list.
+- **Previous audits:** None
 - **Documentation:** https://github.com/Plex-Engineer/ASD-V2/blob/main/README.md
 - **Website:** https://canto.io/
 - **X/Twitter:** https://twitter.com/CantoPublic
@@ -40,163 +111,134 @@ N/A
 
 # Scope
 
-[ ✅ SCOUTS: add scoping and technical details here ]
-
 ### Files in scope
-- ✅ This should be completed using the `metrics.md` file
-- ✅ Last row of the table should be Total: SLOC
-- ✅ SCOUTS: Have the sponsor review and and confirm in text the details in the section titled "Scoping Q amp; A"
+
 
 *For sponsors that don't use the scoping tool: list all files in scope in the table below (along with hyperlinks) -- and feel free to add notes to emphasize areas of focus.*
 
-| Contract | SLOC | Purpose | Libraries used |  
-| ----------- | ----------- | ----------- | ----------- |
-| [contracts/folder/sample.sol](https://github.com/code-423n4/repo-name/blob/contracts/folder/sample.sol) | 123 | This contract does XYZ | [`@openzeppelin/*`](https://openzeppelin.com/contracts/) |
+| File                                  | Logic Contracts | Interfaces |  SLOC   | Purpose | Libraries used |
+|:------------------------------------- |:---------------:|:----------:|:-------:|:------- |:-------------- |
+| /contracts/clm/CTokenInterfaces.sol   |      ****       |     2      |   12    |         |                |
+| /contracts/clm/Turnstile.sol          |      ****       |     1      |    3    |         |                |
+| /contracts/asd/OFT.sol                |        1        |    ****    |    5    |         |                |
+| /contracts/asd/OFTAdapter.sol         |        1        |    ****    |    5    |         |                |
+| /contracts/asd/asdOFT.sol             |        1        |    ****    |   47    |         |                |
+| /contracts/asd/asdRouter.sol          |        1        |    ****    |   138   |         |                |
+| /contracts/asd/asdUSDC.sol            |        1        |    ****    |   40    |         |                |
+| /contracts/ambient/CrocInterfaces.sol |      ****       |     2      |    7    |         |                |
+| **Totals**                            |      **5**      |   **5**    | **257** |         |                |
 
 ### Files out of scope
-✅ SCOUTS: List files/directories out of scope
+| File |
+| ---- |
+| /contracts/test-contracts/USDCOFT.sol |
+| /contracts/test-contracts/TestERC20.sol |
+| /contracts/test-contracts/TestASD.sol |
+| /contracts/test-contracts/MockCrocSwap.sol |
 
 ## Scoping Q &amp; A
 
 ### General questions
-### Are there any ERC20's in scope?: Yes
 
-✅ SCOUTS: If the answer above 👆 is "Yes", please add the tokens below 👇 to the table. Otherwise, update the column with "None".
-
-Layer Zero OFT, USDC
-
-### Are there any ERC777's in scope?: No
-
-✅ SCOUTS: If the answer above 👆 is "Yes", please add the tokens below 👇 to the table. Otherwise, update the column with "None".
-
-
-
-### Are there any ERC721's in scope?: No
-
-✅ SCOUTS: If the answer above 👆 is "Yes", please add the tokens below 👇 to the table. Otherwise, update the column with "None".
-
-
-
-### Are there any ERC1155's in scope?: No
-
-✅ SCOUTS: If the answer above 👆 is "Yes", please add the tokens below 👇 to the table. Otherwise, update the column with "None".
-
-
-
-✅ SCOUTS: Once done populating the table below, please remove all the Q/A data above.
 
 | Question                                | Answer                       |
 | --------------------------------------- | ---------------------------- |
-| ERC20 used by the protocol              |       🖊️             |
-| Test coverage                           | ✅ SCOUTS: Please populate this after running the test coverage command                          |
-| ERC721 used  by the protocol            |            🖊️              |
-| ERC777 used by the protocol             |           🖊️                |
-| ERC1155 used by the protocol            |              🖊️            |
-| Chains the protocol will be deployed on | Ethereum,Arbitrum,Polygon,OtherCanto  |
+| ERC20 used by the protocol              |      Layer Zero OFT, USDC            |
+| Test coverage                           |  75%                          |
+| ERC721 used  by the protocol            |            None              |
+| ERC777 used by the protocol             |           None                |
+| ERC1155 used by the protocol            |              None            |
+| Chains the protocol will be deployed on | Ethereum, Arbitrum, Polygon, OtherCanto  |
 
 ### ERC20 token behaviors in scope
 
 | Question                                                                                                                                                   | Answer |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| [Missing return values](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#missing-return-values)                                                      |   No  |
-| [Fee on transfer](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#fee-on-transfer)                                                                  |  Yes  |
-| [Balance changes outside of transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#balance-modifications-outside-of-transfers-rebasingairdrops) | No    |
-| [Upgradeability](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#upgradable-tokens)                                                                 |   No  |
-| [Flash minting](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#flash-mintable-tokens)                                                              | No    |
-| [Pausability](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#pausable-tokens)                                                                      | No    |
-| [Approval race protections](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#approval-race-protections)                                              | No    |
-| [Revert on approval to zero address](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-approval-to-zero-address)                            | No    |
-| [Revert on zero value approvals](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-approvals)                                    | No    |
-| [Revert on zero value transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-transfers)                                    | Yes    |
-| [Revert on transfer to the zero address](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-transfer-to-the-zero-address)                    | Yes    |
-| [Revert on large approvals and/or transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-large-approvals--transfers)                  | No    |
-| [Doesn't revert on failure](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#no-revert-on-failure)                                                   |  Yes   |
-| [Multiple token addresses](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-transfers)                                          | Yes    |
-| [Low decimals ( < 6)](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#low-decimals)                                                                 |   Yes  |
-| [High decimals ( > 18)](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#high-decimals)                                                              | Yes    |
-| [Blocklists](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#tokens-with-blocklists)                                                                | No    |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- |:------:|
+| [Missing return values](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#missing-return-values)                                                      |   ❌   |
+| [Fee on transfer](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#fee-on-transfer)                                                                  |   ✅   |
+| [Balance changes outside of transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#balance-modifications-outside-of-transfers-rebasingairdrops) |   ❌   |
+| [Upgradeability](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#upgradable-tokens)                                                                 |   ❌   |
+| [Flash minting](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#flash-mintable-tokens)                                                              |   ❌   |
+| [Pausability](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#pausable-tokens)                                                                      |   ❌   |
+| [Approval race protections](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#approval-race-protections)                                              |   ❌   |
+| [Revert on approval to zero address](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-approval-to-zero-address)                            |   ❌   |
+| [Revert on zero value approvals](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-approvals)                                    |   ❌   |
+| [Revert on zero value transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-transfers)                                    |   ✅   |
+| [Revert on transfer to the zero address](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-transfer-to-the-zero-address)                    |   ✅   |
+| [Revert on large approvals and/or transfers](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-large-approvals--transfers)                  |   ❌   |
+| [Doesn't revert on failure](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#no-revert-on-failure)                                                   |   ✅   |
+| [Multiple token addresses](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#revert-on-zero-value-transfers)                                          |   ✅   |
+| [Low decimals ( < 6)](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#low-decimals)                                                                 |   ✅   |
+| [High decimals ( > 18)](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#high-decimals)                                                              |   ✅   |
+| [Blocklists](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#tokens-with-blocklists)                                                                |   ❌   |
 
 ### External integrations (e.g., Uniswap) behavior in scope:
 
 
 | Question                                                  | Answer |
-| --------------------------------------------------------- | ------ |
-| Enabling/disabling fees (e.g. Blur disables/enables fees) | No   |
-| Pausability (e.g. Uniswap pool gets paused)               |  No   |
-| Upgradeability (e.g. Uniswap gets upgraded)               |   No  |
+| --------------------------------------------------------- |:------:|
+| Enabling/disabling fees (e.g. Blur disables/enables fees) |   No   |
+| Pausability (e.g. Uniswap pool gets paused)               |   No   |
+| Upgradeability (e.g. Uniswap gets upgraded)               |   No   |
 
 
 ### EIP compliance checklist
-N/A
-
-✅ SCOUTS: Please format the response above 👆 using the template below👇
-
-| Question                                | Answer                       |
-| --------------------------------------- | ---------------------------- |
-| src/Token.sol                           | ERC20, ERC721                |
-| src/NFT.sol                             | ERC721                       |
+None
 
 
 # Additional context
 
 ## Main invariants
 
-1. ASDRouter native balance should always be zero.
-2. ASDRouter balance of any token should always be zero after lzCompose has completed
-3. ASDUSDC usdcBalances mapping should always sum to the totalSupply
+1. `ASDRouter` native balance should always be zero.
+2. `ASDRouter` balance of any token should always be zero after lzCompose has completed
+3. `ASDUSDC` usdcBalances mapping should always sum to the totalSupply
 
-✅ SCOUTS: Please format the response above 👆 so its not a wall of text and its readable.
 
 ## Attack ideas (where to focus for bugs)
-Since Layer Zero executors call "lzCompose" after sending funds to the ASDRouter Contract, this "lzCompose" function should never revert. All external calls should be checked for success and decoding bytes must never fail. All errors should result in refunds so that tokens do not get trapped in Layer Zero Protocol.
+* Since Layer Zero executors call `lzCompose` after sending funds to the `ASDRouter` Contract, this `lzCompose` function should never revert. 
+* All external calls should be checked for success and decoding bytes must never fail. 
+* All errors should result in refunds so that tokens do not get trapped in Layer Zero Protocol.
 
-✅ SCOUTS: Please format the response above 👆 so its not a wall of text and its readable.
 
 ## All trusted roles in the protocol
 
-1. ASDUSDC owner (setting whitelist for tokens)
-
-✅ SCOUTS: Please format the response above 👆 using the template below👇
 
 | Role                                | Description                       |
 | --------------------------------------- | ---------------------------- |
-| Owner                          | Has superpowers                |
-| Administrator                             | Can change fees                       |
+| ASDUSDC owner                          | Sets whitelist for tokens             |
+
 
 ## Describe any novel or unique curve logic or mathematical models implemented in the contracts:
 
-N/A
+None
 
-✅ SCOUTS: Please format the response above 👆 so its not a wall of text and its readable.
+
 
 ## Running tests
 
-npm install
-npx hardhat compile
-npx hardhat test
-
-✅ SCOUTS: Please format the response above 👆 using the template below👇
-
 ```bash
-git clone https://github.com/code-423n4/2023-08-arbitrum
+git clone https://github.com/code-423n4/2024-03-canto.git
+
 git submodule update --init --recursive
-cd governance
-foundryup
-make install
-make build
-make sc-election-test
+
+npm install
+
+npx hardhat compile
+
+npx hardhat test
 ```
 To run code coverage
 ```bash
-make coverage
+npx hardhat coverage
 ```
 To run gas benchmarks
 ```bash
-make gas
+REPORT_GAS=true npx hardhat test
 ```
+![canto_gas_report](https://github.com/code-423n4/2024-03-canto/assets/65364747/e029a8e9-3375-4fa8-8b83-531c916dc138)
+![canto_coverage](https://github.com/code-423n4/2024-03-canto/assets/65364747/dd43c395-56fc-45b4-94c4-2e014b0191f8)
 
-✅ SCOUTS: Add a screenshot of your terminal showing the gas report
-✅ SCOUTS: Add a screenshot of your terminal showing the test coverage
 
 ## Miscellaneous
 Employees of Canto and employees' family members are ineligible to participate in this audit.

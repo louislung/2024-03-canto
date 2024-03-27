@@ -1,0 +1,4 @@
+./contracts/test-contracts/MockCrocSwap.sol
+./contracts/test-contracts/TestASD.sol
+./contracts/test-contracts/TestERC20.sol
+./contracts/test-contracts/USDCOFT.sol

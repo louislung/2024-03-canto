@@ -54,14 +54,12 @@ Some of the checklists in this doc are for **C4 (🐺)** and some of them are fo
 ---
 
 # Canto audit details
-- Total Prize Pool: $13500 in CANTO
-  - HM awards: $9900 in CANTO
-  - (remove this line if there is no Analysis pool) Analysis awards: XXX XXX USDC (Notion: Analysis pool)
+- Total Prize Pool: $13,500 in CANTO
+  - HM awards: $9,900 in CANTO
+  - Analysis awards: $500 in USDC 
   - QA awards: $300 in CANTO
-  - (remove this line if there is no Bot race) Bot Race awards: XXX XXX USDC (Notion: Bot Race pool)
   - Gas awards: $300 in CANTO
   - Judge awards: $2000 in CANTO
-  - Lookout awards: XXX XXX USDC (Notion: Sum of Pre-sort fee + Pre-sort early bonus)
   - Scout awards: $500 in CANTO
  
 - Join [C4 Discord](https://discord.gg/code4rena) to register

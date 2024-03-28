@@ -1,11 +1,13 @@
 # Canto audit details
-- Total Prize Pool: $13,500 in CANTO
-  - HM awards: $9,900 in CANTO
-  - Analysis awards: $500 in CANTO
-  - QA awards: $300 in CANTO
-  - Gas awards: $300 in CANTO
-  - Judge awards: $2,000 in CANTO
-  - Scout awards: $500 in CANTO
+- Total Prize Pool: $13,500
+  - HM awards: $9,900
+  - Analysis awards: $500
+  - QA awards: $300
+  - Gas awards: $300
+  - Judge awards: $2,000
+  - Scout awards: $500
+ 
+  ❗️Awarding Note for Wardens, Judges, and Lookouts: If you want to claim your awards in $ worth of CANTO, you must follow the steps outlined in this thread; otherwise you'll be paid out in USDC.
  
 - Join [C4 Discord](https://discord.gg/code4rena) to register
 - Submit findings [using the C4 form](https://code4rena.com/contests/2024-03-canto/submit)

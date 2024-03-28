@@ -120,15 +120,13 @@ ASDUSDC is a simple wrapper for all of the different representations for the sam
 
 | File                                  | Logic Contracts | Interfaces |  SLOC   | Purpose | Libraries used |
 |:------------------------------------- |:---------------:|:----------:|:-------:|:------- |:-------------- |
-| /contracts/clm/CTokenInterfaces.sol   |      ****       |     2      |   12    |         |                |
-| /contracts/clm/Turnstile.sol          |      ****       |     1      |    3    |         |                |
-| /contracts/asd/OFT.sol                |        1        |    ****    |    5    |         |                |
-| /contracts/asd/OFTAdapter.sol         |        1        |    ****    |    5    |         |                |
-| /contracts/asd/asdOFT.sol             |        1        |    ****    |   47    |         |                |
-| /contracts/asd/asdRouter.sol          |        1        |    ****    |   138   |         |                |
-| /contracts/asd/asdUSDC.sol            |        1        |    ****    |   40    |         |                |
-| /contracts/ambient/CrocInterfaces.sol |      ****       |     2      |    7    |         |                |
-| **Totals**                            |      **5**      |   **5**    | **257** |         |                |
+| /contracts/clm/CTokenInterfaces.sol   |      ****       |     2      |   12    |    Interaction with Compound Lending Market cTokens     |       ****         |
+| /contracts/clm/Turnstile.sol          |      ****       |     1      |    3    |   Registers contract to CSR (contract secured revenue)      |      ****          |
+| /contracts/asd/asdOFT.sol             |        1        |    ****    |   47    |    Mints and burns ASD tokens by depositing/withdrawing $NOTE and supplying/withdrawing from Canto Lending Market     |     ERC20, OFT, CErc20Interface           |
+| /contracts/asd/asdRouter.sol          |        1        |    ****    |   138   |   Routes stable OFTs to correct ASD vault and returns to user on destination chain in a single transaction      |    OptionsBuilder, IOFT, OFTComposeMsgCodec, IOAppComposer            |
+| /contracts/asd/asdUSDC.sol            |        1        |    ****    |   40    |   Wrapper for different OFT representations of the same underlying token to be used in dex      |     ERC20           |
+| /contracts/ambient/CrocInterfaces.sol |      ****       |     2      |    7    |   Interface for ambient dex for router to swap for Note      |      ****          |
+| **Totals**                            |      **3**      |   **5**    | **247** |         |                |
 
 ### Files out of scope
 | File |
@@ -137,6 +135,8 @@ ASDUSDC is a simple wrapper for all of the different representations for the sam
 | /contracts/test-contracts/TestERC20.sol |
 | /contracts/test-contracts/TestASD.sol |
 | /contracts/test-contracts/MockCrocSwap.sol |
+| /contracts/asd/OFT.sol |
+| /contracts/asd/OFTAdapter.sol |
 
 ## Scoping Q &amp; A
 

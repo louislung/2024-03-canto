@@ -116,8 +116,6 @@ ASDUSDC is a simple wrapper for all of the different representations for the sam
 ### Files in scope
 
 
-*For sponsors that don't use the scoping tool: list all files in scope in the table below (along with hyperlinks) -- and feel free to add notes to emphasize areas of focus.*
-
 | File                                  | Logic Contracts | Interfaces |  SLOC   | Purpose | Libraries used |
 |:------------------------------------- |:---------------:|:----------:|:-------:|:------- |:-------------- |
 | /contracts/clm/CTokenInterfaces.sol   |      ****       |     2      |   12    |    Interaction with Compound Lending Market cTokens     |       ****         |

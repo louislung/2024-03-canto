@@ -152,6 +152,9 @@ ASDUSDC is a simple wrapper for all of the different representations for the sam
 
 ### ERC20 token behaviors in scope
 
+- The only tokens in scope are: Layer Zero OFT, USDC
+- Vulnerabilities related to these token behaviours are only considered valid if they actually exist in tokens which are used, i.e. Layer Zero OFT, USDC.
+
 | Question                                                                                                                                                   | Answer |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |:------:|
 | [Missing return values](https://github.com/d-xo/weird-erc20?tab=readme-ov-file#missing-return-values)                                                      |   ❌   |

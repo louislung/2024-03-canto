@@ -1,3 +1,15 @@
+# Findings
+
+1. `asdUSDC.sol` `function recover` missing whitelist check for usdcVersion, this allows owner to potentialy mint any amount of asdUSDC token
+
+2. UDFCOFT token has to be deposited to ASDRouter first before calling `lzCompose`. But not checking is performed, this allow anyone to call lzCompose using token deposited by someone else.
+(this is valid, but should cross check how layerzero works)
+
+# Learnings
+1. read the README, there is some explanation about the contract, or some assumption (e.g. token balance of ASDRouter should always be zero)
+2. [M-01] token (NOTE$) address can change 
+3. [M-02] becareful of some mock contract used in test, there may be missing logic
+
 # Canto audit details
 - Total Prize Pool: $13,500
   - HM awards: $9,900
